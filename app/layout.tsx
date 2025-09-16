@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 			url: "https://apusindustries.vercel.app",
 		},
 	],
-	keywords: ["Bible", "Hebrew", "Yahuah Dabar"],
+	keywords: ["Bible", "Hebrew", "Yahuah Dabar", "Books"],
 	creator: "Gsoft Team",
 };
 

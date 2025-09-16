@@ -130,7 +130,7 @@ export default function ChaptersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold md:text-2xl">Chapters Management</h1>
-          <p className="text-muted-foreground">Manage chapters within Bible books</p>
+          <p className="text-muted-foreground">Manage chapters within Yahuah Dabar  books</p>
         </div>
         <Button onClick={handleCreateChapter}>
           <Plus className="mr-2 h-4 w-4" />
