@@ -111,14 +111,14 @@ export default function LoginPage() {
 						</Button>
 					</form>
 
-					<div className="mt-4 text-center text-sm">
+					{/* <div className="mt-4 text-center text-sm">
 						<span className="text-muted-foreground">Don't have an account? </span>
 						<Link
 							href="/signup"
 							className="text-primary hover:underline font-medium">
 							Sign up
 						</Link>
-					</div>
+					</div> */}
 				</CardContent>
 			</Card>
 		</div>
