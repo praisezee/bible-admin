@@ -125,7 +125,9 @@ export default function ExportPage() {
 
 		const link = document.createElement("a");
 		link.href = url;
-		link.download = `bible-export-${new Date().toISOString().split("T")[0]}.json`;
+		link.download = `scipture-export-${
+			new Date().toISOString().split("T")[0]
+		}.json`;
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);
@@ -305,7 +307,7 @@ export default function ExportPage() {
 								</div>
 								<div className="flex items-center gap-2">
 									<Badge variant="outline">Sorted</Badge>
-									<span className="text-sm">Ordered by testament and number</span>
+									<span className="text-sm">Ordered by convenant and number</span>
 								</div>
 							</div>
 						</div>
@@ -337,7 +339,7 @@ export default function ExportPage() {
   "books": [
     {
       "name": "Genesis",
-      "testament": "OLD",
+      "convenant": "OLD",
       "chapters": [
         {
           "number": 1,

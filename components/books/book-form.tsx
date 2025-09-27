@@ -79,12 +79,12 @@ export function BookForm({
 		}
 
 		if (!testament) {
-			setError("Testament is required");
+			setError("convenant is required");
 			return false;
 		}
 
 		if (!["OLD", "NEW", "CUSTOM"].includes(testament)) {
-			setError("Testament must be OLD, NEW, or CUSTOM");
+			setError("convenant must be OLD, NEW, or CUSTOM");
 			return false;
 		}
 
@@ -180,7 +180,7 @@ export function BookForm({
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="testament">Testament</Label>
+						<Label htmlFor="testament">convenant</Label>
 						<Select
 							value={testament}
 							onValueChange={setTestament}
@@ -190,8 +190,8 @@ export function BookForm({
 								<SelectValue placeholder="Select testament" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="OLD">Old Testament</SelectItem>
-								<SelectItem value="NEW">New Testament</SelectItem>
+								<SelectItem value="OLD">Old convenant</SelectItem>
+								<SelectItem value="NEW">New convenant</SelectItem>
 								<SelectItem value="CUSTOM">Custom</SelectItem>
 							</SelectContent>
 						</Select>

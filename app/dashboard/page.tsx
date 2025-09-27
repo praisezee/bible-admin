@@ -173,10 +173,10 @@ export default function DashboardPage() {
 							Navigate to different sections:
 						</p>
 						<ul className="text-sm space-y-1">
-							<li>• Manage Books and Testaments</li>
+							<li>• Manage Books and convenants</li>
 							<li>• Organize Chapters by Book</li>
 							<li>• Edit Individual Verses</li>
-							<li>• Export Complete Yahuah Dabar  Data</li>
+							<li>• Export Complete Yahuah Dabar Data</li>
 						</ul>
 					</CardContent>
 				</Card>
