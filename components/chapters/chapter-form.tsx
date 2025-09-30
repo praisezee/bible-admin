@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
+import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,8 +17,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { apiClient } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { Loader2 } from "lucide-react"
 
 interface Chapter {
   id: string
@@ -42,19 +45,22 @@ interface ChapterFormProps {
 export function ChapterForm({ chapter, open, onOpenChange, onSuccess }: ChapterFormProps) {
   const [number, setNumber] = useState("")
   const [bookId, setBookId] = useState("")
-  const [books, setBooks] = useState<Book[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [isLoadingBooks, setIsLoadingBooks] = useState(false)
   const [error, setError] = useState("")
 
   const { toast } = useToast()
   const isEditing = !!chapter
 
-  useEffect(() => {
-    if (open) {
-      fetchBooks()
-    }
-  }, [open])
+  const { data: booksData, isLoading: isLoadingBooks } = useSWR(
+    open ? "/api/book/all" : null,
+    () => apiClient.getBooks(1, 1000),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 300000,
+    },
+  )
+
+  const books = (booksData?.data || []) as Book[]
 
   useEffect(() => {
     if (chapter) {
@@ -66,25 +72,6 @@ export function ChapterForm({ chapter, open, onOpenChange, onSuccess }: ChapterF
     }
     setError("")
   }, [chapter, open])
-
-  const fetchBooks = async () => {
-    try {
-      setIsLoadingBooks(true)
-      const response = await apiClient.getBooks()
-      if (response.success && response.data) {
-        setBooks(response.data)
-      }
-    } catch (error) {
-      console.error("Failed to fetch books:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load books",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoadingBooks(false)
-    }
-  }
 
   const validateForm = () => {
     if (!number.trim()) {
@@ -153,15 +140,15 @@ export function ChapterForm({ chapter, open, onOpenChange, onSuccess }: ChapterF
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Chapter" : "Create New Chapter"}</DialogTitle>
+          <DialogTitle className="text-xl">{isEditing ? "Edit Chapter" : "Create New Chapter"}</DialogTitle>
           <DialogDescription>
             {isEditing ? "Update the chapter information below." : "Add a new chapter to a book."}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
@@ -169,40 +156,53 @@ export function ChapterForm({ chapter, open, onOpenChange, onSuccess }: ChapterF
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="book">Book</Label>
+            <Label htmlFor="book" className="text-sm font-medium">
+              Book <span className="text-destructive">*</span>
+            </Label>
             <Select value={bookId} onValueChange={setBookId} disabled={isLoading || isLoadingBooks} required>
-              <SelectTrigger>
+              <SelectTrigger className="h-10">
                 <SelectValue placeholder={isLoadingBooks ? "Loading books..." : "Select a book"} />
               </SelectTrigger>
               <SelectContent>
                 {books.map((book) => (
                   <SelectItem key={book.id} value={book.id}>
-                    {book.name} ({book.testament})
+                    <div className="flex items-center gap-2">
+                      <span>{book.name}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {book.testament === "OLD" ? "OT" : book.testament === "NEW" ? "NT" : "Custom"}
+                      </Badge>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">Select the book this chapter belongs to</p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="number">Chapter Number</Label>
+            <Label htmlFor="number" className="text-sm font-medium">
+              Chapter Number <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="number"
               type="number"
               value={number}
               onChange={(e) => setNumber(e.target.value)}
-              placeholder="Enter chapter number"
+              placeholder="e.g., 1, 2, 3"
               disabled={isLoading}
               required
               min="1"
+              className="h-10"
             />
+            <p className="text-xs text-muted-foreground">Enter the chapter number (must be positive)</p>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading || isLoadingBooks}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isLoading
                 ? isEditing
                   ? "Updating..."

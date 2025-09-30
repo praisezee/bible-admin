@@ -2,6 +2,17 @@ import type { ApiResponse } from "./types"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001"
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status?: number,
+    public endpoint?: string,
+  ) {
+    super(message)
+    this.name = "ApiError"
+  }
+}
+
 class ApiClient {
   private accessToken: string | null = null
 
@@ -31,16 +42,37 @@ class ApiClient {
         headers,
       })
 
-      const data = await response.json()
-
       if (!response.ok) {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`)
+        let errorMessage = `HTTP error! status: ${response.status}`
+
+        try {
+          const data = await response.json()
+          errorMessage = data.message || errorMessage
+        } catch {
+          // Response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage
+        }
+
+        throw new ApiError(errorMessage, response.status, endpoint)
       }
 
+      const data = await response.json()
       return data
     } catch (error) {
-      console.error("API request failed:", error)
-      throw error
+      if (error instanceof ApiError) {
+        throw error
+      }
+
+      // Network error or fetch failed
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        throw new ApiError(
+          `Cannot connect to API at ${API_BASE_URL}. Please check if the API server is running and NEXT_PUBLIC_API_BASE_URL is configured correctly.`,
+          0,
+          endpoint,
+        )
+      }
+
+      throw new ApiError(error instanceof Error ? error.message : "Unknown error occurred", undefined, endpoint)
     }
   }
 
@@ -66,8 +98,8 @@ class ApiClient {
   }
 
   // Books endpoints
-  async getBooks() {
-    return this.request("/api/book")
+  async getBooks(page = 1, limit = 20) {
+    return this.request(`/api/book?page=${page}&limit=${limit}`)
   }
 
   async getBook(id: string) {
@@ -99,9 +131,12 @@ class ApiClient {
   }
 
   // Chapters endpoints
-  async getChapters(bookId?: string) {
-    const query = bookId ? `?bookId=${bookId}` : ""
-    return this.request(`/api/chapter${query}`)
+  async getChapters(bookId?: string, page = 1, limit = 20) {
+    const params = new URLSearchParams()
+    if (bookId) params.append("bookId", bookId)
+    params.append("page", page.toString())
+    params.append("limit", limit.toString())
+    return this.request(`/api/chapter?${params.toString()}`)
   }
 
   async getChapter(id: string) {
@@ -129,9 +164,12 @@ class ApiClient {
   }
 
   // Verses endpoints
-  async getVerses(chapterId?: string) {
-    const query = chapterId ? `?chapterId=${chapterId}` : ""
-    return this.request(`/api/verse${query}`)
+  async getVerses(chapterId?: string, page = 1, limit = 20) {
+    const params = new URLSearchParams()
+    if (chapterId) params.append("chapterId", chapterId)
+    params.append("page", page.toString())
+    params.append("limit", limit.toString())
+    return this.request(`/api/verse?${params.toString()}`)
   }
 
   async getVerse(id: string) {

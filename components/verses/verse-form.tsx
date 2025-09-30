@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
+import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,6 +18,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Loader2 } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 
@@ -53,97 +56,46 @@ export function VerseForm({ verse, open, onOpenChange, onSuccess }: VerseFormPro
   const [text, setText] = useState("")
   const [selectedBookId, setSelectedBookId] = useState("")
   const [chapterId, setChapterId] = useState("")
-  const [books, setBooks] = useState<Book[]>([])
-  const [chapters, setChapters] = useState<Chapter[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [isLoadingBooks, setIsLoadingBooks] = useState(false)
-  const [isLoadingChapters, setIsLoadingChapters] = useState(false)
   const [error, setError] = useState("")
 
   const { toast } = useToast()
   const isEditing = !!verse
 
-  useEffect(() => {
-    if (open) {
-      fetchBooks()
-    }
-  }, [open])
+  const { data: booksData, isLoading: isLoadingBooks } = useSWR(
+    open ? "/api/book/all" : null,
+    () => apiClient.getBooks(1, 1000),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 300000,
+    },
+  )
+
+  const { data: chaptersData, isLoading: isLoadingChapters } = useSWR(
+    open && selectedBookId ? ["/api/chapter/by-book", selectedBookId] : null,
+    () => apiClient.getChapters(selectedBookId, 1, 1000),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 300000,
+    },
+  )
+
+  const books = (booksData?.data || []) as Book[]
+  const chapters = (chaptersData?.data || []) as Chapter[]
 
   useEffect(() => {
     if (verse) {
       setNumber(verse.number.toString())
       setText(verse.text)
       setChapterId(verse.chapterId)
-      // We'll need to find the book ID from the chapter
-      fetchChapterDetails(verse.chapterId)
     } else {
       setNumber("")
       setText("")
       setSelectedBookId("")
       setChapterId("")
-      setChapters([])
     }
     setError("")
   }, [verse, open])
-
-  useEffect(() => {
-    if (selectedBookId) {
-      fetchChapters(selectedBookId)
-    } else {
-      setChapters([])
-      setChapterId("")
-    }
-  }, [selectedBookId])
-
-  const fetchBooks = async () => {
-    try {
-      setIsLoadingBooks(true)
-      const response = await apiClient.getBooks()
-      if (response.success && response.data) {
-        setBooks(response.data)
-      }
-    } catch (error) {
-      console.error("Failed to fetch books:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load books",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoadingBooks(false)
-    }
-  }
-
-  const fetchChapters = async (bookId: string) => {
-    try {
-      setIsLoadingChapters(true)
-      const response = await apiClient.getChapters(bookId)
-      if (response.success && response.data) {
-        setChapters(response.data)
-      }
-    } catch (error) {
-      console.error("Failed to fetch chapters:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load chapters",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoadingChapters(false)
-    }
-  }
-
-  const fetchChapterDetails = async (chapterId: string) => {
-    try {
-      const response = await apiClient.getChapter(chapterId)
-      if (response.success && response.data) {
-        const chapter = response.data
-        setSelectedBookId(chapter.bookId)
-      }
-    } catch (error) {
-      console.error("Failed to fetch chapter details:", error)
-    }
-  }
 
   const validateForm = () => {
     if (!number.trim()) {
@@ -223,36 +175,47 @@ export function VerseForm({ verse, open, onOpenChange, onSuccess }: VerseFormPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Verse" : "Create New Verse"}</DialogTitle>
+          <DialogTitle className="text-xl">{isEditing ? "Edit Verse" : "Create New Verse"}</DialogTitle>
           <DialogDescription>
             {isEditing ? "Update the verse information below." : "Add a new verse to a chapter."}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="book">Book</Label>
+              <Label htmlFor="book" className="text-sm font-medium">
+                Book <span className="text-destructive">*</span>
+              </Label>
               <Select
                 value={selectedBookId}
                 onValueChange={setSelectedBookId}
                 disabled={isLoading || isLoadingBooks || isEditing}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder={isLoadingBooks ? "Loading books..." : "Select a book"} />
+                <SelectTrigger className="h-10">
+                  <SelectValue
+                    placeholder={
+                      isLoadingBooks ? "Loading books..." : isEditing ? verse?.bookName || "Book" : "Select a book"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {books.map((book) => (
                     <SelectItem key={book.id} value={book.id}>
-                      {book.name} ({book.testament})
+                      <div className="flex items-center gap-2">
+                        <span>{book.name}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {book.testament === "OLD" ? "OT" : book.testament === "NEW" ? "NT" : "Custom"}
+                        </Badge>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -260,21 +223,25 @@ export function VerseForm({ verse, open, onOpenChange, onSuccess }: VerseFormPro
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="chapter">Chapter</Label>
+              <Label htmlFor="chapter" className="text-sm font-medium">
+                Chapter <span className="text-destructive">*</span>
+              </Label>
               <Select
                 value={chapterId}
                 onValueChange={setChapterId}
                 disabled={isLoading || isLoadingChapters || !selectedBookId || isEditing}
                 required
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-10">
                   <SelectValue
                     placeholder={
                       isLoadingChapters
                         ? "Loading chapters..."
                         : !selectedBookId
                           ? "Select a book first"
-                          : "Select a chapter"
+                          : isEditing
+                            ? `Chapter ${verse?.chapterNumber || ""}`
+                            : "Select a chapter"
                     }
                   />
                 </SelectTrigger>
@@ -290,40 +257,50 @@ export function VerseForm({ verse, open, onOpenChange, onSuccess }: VerseFormPro
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="number">Verse Number</Label>
+            <Label htmlFor="number" className="text-sm font-medium">
+              Verse Number <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="number"
               type="number"
               value={number}
               onChange={(e) => setNumber(e.target.value)}
-              placeholder="Enter verse number"
+              placeholder="e.g., 1, 2, 3"
               disabled={isLoading}
               required
               min="1"
+              className="h-10"
             />
+            <p className="text-xs text-muted-foreground">Enter the verse number (must be positive)</p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="text">Verse Text</Label>
+            <Label htmlFor="text" className="text-sm font-medium">
+              Verse Text <span className="text-destructive">*</span>
+            </Label>
             <Textarea
               id="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Enter verse text (min 3 characters)"
+              placeholder="Enter the complete verse text..."
               disabled={isLoading}
               required
               minLength={3}
-              rows={4}
+              rows={6}
               className="resize-none"
             />
-            <p className="text-xs text-muted-foreground">{text.length} characters</p>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Minimum 3 characters required</span>
+              <span className={text.length < 3 ? "text-destructive" : ""}>{text.length} characters</span>
+            </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading || isLoadingBooks || isLoadingChapters}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isLoading ? (isEditing ? "Updating..." : "Creating...") : isEditing ? "Update Verse" : "Create Verse"}
             </Button>
           </DialogFooter>
