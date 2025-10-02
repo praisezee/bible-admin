@@ -13,11 +13,12 @@ import { Badge } from "@/components/ui/badge"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { VerseForm } from "@/components/verses/verse-form"
 import { DeleteVerseDialog } from "@/components/verses/delete-verse-dialog"
+import { BulkUploadDialog } from "@/components/verses/bulk-upload-dialog"
 import { ApiErrorAlert } from "@/components/api-error-alert"
 import { useVerses } from "@/lib/hooks/use-verses"
 import { apiClient } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
-import { Plus, Search, Edit, Trash2, ScrollText } from "lucide-react"
+import { Plus, Search, Edit, Trash2, ScrollText, Upload } from "lucide-react"
 
 interface Verse {
   id: string
@@ -51,6 +52,7 @@ export default function VersesPage() {
   const [chapterFilter, setChapterFilter] = useState(chapterIdFromUrl || "")
   const [showVerseForm, setShowVerseForm] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showBulkUpload, setShowBulkUpload] = useState(false)
   const [selectedVerse, setSelectedVerse] = useState<Verse | null>(null)
 
   const { toast } = useToast()
@@ -147,6 +149,31 @@ export default function VersesPage() {
     setShowDeleteDialog(true)
   }
 
+  const handleBulkUploadSuccess = async (bookId?: string, chapterId?: string) => {
+    // Refresh all data
+    await mutate()
+
+    if (bookId) {
+      setBookFilter(bookId)
+
+      // Wait a moment for the data to refresh, then set chapter filter
+      setTimeout(async () => {
+        if (chapterId) {
+          setChapterFilter(chapterId)
+        } else if (bookId) {
+          // If no chapter ID provided (new chapter), find the latest chapter for this book
+          const updatedChapters = await apiClient.getChapters(undefined, 1, 1000)
+          const bookChapters = (updatedChapters.data || []).filter((c: Chapter) => c.bookId === bookId)
+          if (bookChapters.length > 0) {
+            // Sort by chapter number and get the last one
+            const latestChapter = bookChapters.sort((a: Chapter, b: Chapter) => b.number - a.number)[0]
+            setChapterFilter(latestChapter.id)
+          }
+        }
+      }, 500)
+    }
+  }
+
   const handleFormSuccess = () => {
     mutate()
   }
@@ -216,10 +243,21 @@ export default function VersesPage() {
               : "Manage individual verses within chapters"}
           </p>
         </div>
-        <Button onClick={handleCreateVerse} size="default" className="w-full md:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Verse
-        </Button>
+        <div className="flex gap-2 w-full md:w-auto">
+          <Button
+            onClick={() => setShowBulkUpload(true)}
+            variant="outline"
+            size="default"
+            className="flex-1 md:flex-initial"
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Bulk Upload
+          </Button>
+          <Button onClick={handleCreateVerse} size="default" className="flex-1 md:flex-initial">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Verse
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -382,6 +420,14 @@ export default function VersesPage() {
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         onSuccess={handleFormSuccess}
+      />
+
+      <BulkUploadDialog
+        open={showBulkUpload}
+        onOpenChange={setShowBulkUpload}
+        onSuccess={handleBulkUploadSuccess}
+        books={books}
+        chapters={chapters}
       />
     </DashboardLayout>
   )

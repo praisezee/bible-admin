@@ -195,6 +195,18 @@ class ApiClient {
       method: "DELETE",
     })
   }
+
+  async bulkUpdateVerses(data: {
+    bookName: string
+    chapterNumber: number
+    versesText: string
+    testament?: "OLD" | "NEW" | "CUSTOM"
+  }) {
+    return this.request("/api/verse/bulk-update", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  }
 }
 
 export const apiClient = new ApiClient()

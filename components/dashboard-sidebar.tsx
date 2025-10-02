@@ -53,7 +53,7 @@ function SidebarContent({ className }: SidebarProps) {
         </Link>
       </div>
       <ScrollArea className="flex-1 px-3">
-        <div className="py-2.5 px-0 space-x-0">
+        <div className="py-2.5 space-y-1">
           {navigation.map((item) => {
             const isActive = pathname === item.href
             return (
@@ -61,14 +61,14 @@ function SidebarContent({ className }: SidebarProps) {
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors w font-thin-full font-medium",
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors font-medium",
                   isActive
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                 )}
               >
-                <item.icon className="h-4 w-4" />
-                {item.name}
+                <item.icon className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate">{item.name}</span>
               </Link>
             )
           })}
@@ -81,7 +81,7 @@ function SidebarContent({ className }: SidebarProps) {
 export function DashboardSidebar() {
   return (
     <div className="hidden border-r bg-muted/40 md:block">
-      <SidebarContent className="w-64" />
+      <SidebarContent />
     </div>
   )
 }
